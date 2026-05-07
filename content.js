@@ -20,6 +20,7 @@ document.addEventListener("click", async function (event) {
 
   let text = "";
   let highlightElement = null;
+  let highlightRange = null;
 
   const block = event.target.closest("p, div, li");
   if (!block) return;
@@ -30,34 +31,39 @@ document.addEventListener("click", async function (event) {
   }
 
   if (copyMode === "sentence") {
-    text = getSentenceFromClick(block, event.clientX, event.clientY);
-    highlightElement = block;
+    const sentenceInfo = getSentenceFromClick(event.clientX, event.clientY);
+    text = sentenceInfo.text;
+    highlightRange = sentenceInfo.range;
   }
 
   if (!text) return;
 
   try {
     await navigator.clipboard.writeText(text);
-    flashBorder(highlightElement);
+    if (copyMode === "sentence" && highlightRange) {
+      flashRangeBorder(highlightRange);
+    } else {
+      flashBorder(highlightElement);
+    }
     console.log("Copied:", text);
   } catch (error) {
     console.error("Clipboard copy failed:", error);
   }
 }, true);
 
-function getSentenceFromClick(block, x, y) {
+function getSentenceFromClick(x, y) {
   const range = getCaretRangeFromPoint(x, y);
-  if (!range) return "";
+  if (!range) return { text: "", range: null };
 
   const clickedNode = range.startContainer;
   const clickedOffset = range.startOffset;
 
   if (!clickedNode || clickedNode.nodeType !== Node.TEXT_NODE) {
-    return "";
+    return { text: "", range: null };
   }
 
   const text = clickedNode.textContent;
-  if (!text) return "";
+  if (!text) return { text: "", range: null };
 
   let start = text.lastIndexOf(".", clickedOffset);
   let end = text.indexOf(".", clickedOffset);
@@ -65,7 +71,14 @@ function getSentenceFromClick(block, x, y) {
   start = start === -1 ? 0 : start + 1;
   end = end === -1 ? text.length : end + 1;
 
-  return text.slice(start, end).trim();
+  const sentenceText = text.slice(start, end).trim();
+  if (!sentenceText) return { text: "", range: null };
+
+  const sentenceRange = document.createRange();
+  sentenceRange.setStart(clickedNode, start);
+  sentenceRange.setEnd(clickedNode, end);
+
+  return { text: sentenceText, range: sentenceRange };
 }
 
 function getCaretRangeFromPoint(x, y) {
@@ -86,6 +99,8 @@ function getCaretRangeFromPoint(x, y) {
 }
 
 function flashBorder(element) {
+  if (!element) return;
+
   const originalOutline = element.style.outline;
   const originalOutlineOffset = element.style.outlineOffset;
 
@@ -95,5 +110,36 @@ function flashBorder(element) {
   setTimeout(() => {
     element.style.outline = originalOutline;
     element.style.outlineOffset = originalOutlineOffset;
+  }, 1000);
+}
+
+function flashRangeBorder(range) {
+  if (!range) return;
+
+  const rects = Array.from(range.getClientRects()).filter(
+    (rect) => rect.width > 0 && rect.height > 0
+  );
+
+  if (rects.length === 0) return;
+
+  const overlays = rects.map((rect) => {
+    const overlay = document.createElement("div");
+
+    overlay.style.position = "fixed";
+    overlay.style.left = `${rect.left}px`;
+    overlay.style.top = `${rect.top}px`;
+    overlay.style.width = `${rect.width}px`;
+    overlay.style.height = `${rect.height}px`;
+    overlay.style.border = "2px solid red";
+    overlay.style.boxSizing = "border-box";
+    overlay.style.pointerEvents = "none";
+    overlay.style.zIndex = "2147483647";
+
+    document.body.appendChild(overlay);
+    return overlay;
+  });
+
+  setTimeout(() => {
+    overlays.forEach((overlay) => overlay.remove());
   }, 1000);
 }
