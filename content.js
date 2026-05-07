@@ -31,7 +31,7 @@ document.addEventListener("click", async function (event) {
   }
 
   if (copyMode === "sentence") {
-    const sentenceInfo = getSentenceFromClick(event.clientX, event.clientY);
+    const sentenceInfo = getSentenceFromClick(block, event.clientX, event.clientY);
     text = sentenceInfo.text;
     highlightRange = sentenceInfo.range;
   }
@@ -51,7 +51,7 @@ document.addEventListener("click", async function (event) {
   }
 }, true);
 
-function getSentenceFromClick(x, y) {
+function getSentenceFromClick(block, x, y) {
   const range = getCaretRangeFromPoint(x, y);
   if (!range) return { text: "", range: null };
 
@@ -62,23 +62,76 @@ function getSentenceFromClick(x, y) {
     return { text: "", range: null };
   }
 
-  const text = clickedNode.textContent;
-  if (!text) return { text: "", range: null };
+  const segments = getTextSegments(block);
+  if (segments.length === 0) return { text: "", range: null };
 
-  let start = text.lastIndexOf(".", clickedOffset);
-  let end = text.indexOf(".", clickedOffset);
+  const clickedSegment = segments.find((segment) => segment.node === clickedNode);
+  if (!clickedSegment) return { text: "", range: null };
+
+  const fullText = segments.map((segment) => segment.text).join("");
+  const globalOffset = clickedSegment.start + clickedOffset;
+
+  let start = fullText.lastIndexOf(".", globalOffset);
+  let end = fullText.indexOf(".", globalOffset);
 
   start = start === -1 ? 0 : start + 1;
-  end = end === -1 ? text.length : end + 1;
+  end = end === -1 ? fullText.length : end + 1;
 
-  const sentenceText = text.slice(start, end).trim();
+  const sentenceText = fullText.slice(start, end).trim();
   if (!sentenceText) return { text: "", range: null };
 
+  const startPos = getPositionFromOffset(segments, start);
+  const endPos = getPositionFromOffset(segments, end);
+  if (!startPos || !endPos) return { text: "", range: null };
+
   const sentenceRange = document.createRange();
-  sentenceRange.setStart(clickedNode, start);
-  sentenceRange.setEnd(clickedNode, end);
+  sentenceRange.setStart(startPos.node, startPos.offset);
+  sentenceRange.setEnd(endPos.node, endPos.offset);
 
   return { text: sentenceText, range: sentenceRange };
+}
+
+function getTextSegments(block) {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  const segments = [];
+  let cursor = 0;
+  let node = walker.nextNode();
+
+  while (node) {
+    const text = node.textContent || "";
+    if (text.length > 0) {
+      segments.push({
+        node,
+        text,
+        start: cursor,
+        end: cursor + text.length,
+      });
+      cursor += text.length;
+    }
+    node = walker.nextNode();
+  }
+
+  return segments;
+}
+
+function getPositionFromOffset(segments, offset) {
+  for (let i = 0; i < segments.length; i += 1) {
+    const segment = segments[i];
+    if (offset >= segment.start && offset <= segment.end) {
+      return {
+        node: segment.node,
+        offset: offset - segment.start,
+      };
+    }
+  }
+
+  const lastSegment = segments[segments.length - 1];
+  if (!lastSegment) return null;
+
+  return {
+    node: lastSegment.node,
+    offset: lastSegment.text.length,
+  };
 }
 
 function getCaretRangeFromPoint(x, y) {
