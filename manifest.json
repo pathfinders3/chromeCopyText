@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Ctrl Click Paragraph Copier",
+  "version": "1.0",
+  "description": "Ctrl + Click으로 단락/줄 텍스트를 클립보드에 복사합니다.",
+  "permissions": ["clipboardWrite", "storage"],
+  "options_page": "options.html",
+  
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+
