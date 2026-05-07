@@ -1,4 +1,5 @@
 let copyMode = "tag";
+const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 
 // 옵션값을 미리 읽어둠
 chrome.storage.sync.get({ copyMode: "tag" }, (items) => {
@@ -71,11 +72,8 @@ function getSentenceFromClick(block, x, y) {
   const fullText = segments.map((segment) => segment.text).join("");
   const globalOffset = clickedSegment.start + clickedOffset;
 
-  let start = fullText.lastIndexOf(".", globalOffset);
-  let end = fullText.indexOf(".", globalOffset);
-
-  start = start === -1 ? 0 : start + 1;
-  end = end === -1 ? fullText.length : end + 1;
+  const start = findSentenceStart(fullText, globalOffset);
+  const end = findSentenceEnd(fullText, globalOffset);
 
   const sentenceText = fullText.slice(start, end).trim();
   if (!sentenceText) return { text: "", range: null };
@@ -89,6 +87,44 @@ function getSentenceFromClick(block, x, y) {
   sentenceRange.setEnd(endPos.node, endPos.offset);
 
   return { text: sentenceText, range: sentenceRange };
+}
+
+function isSentenceDelimiter(char) {
+  return SENTENCE_DELIMITERS.has(char);
+}
+
+function skipLeadingSpaces(text, index) {
+  let i = index;
+  while (i < text.length && /\s/.test(text[i])) {
+    i += 1;
+  }
+  return i;
+}
+
+function findSentenceStart(text, pivot) {
+  if (!text) return 0;
+
+  const startPivot = Math.min(Math.max(pivot, 0), text.length - 1);
+  for (let i = startPivot; i >= 0; i -= 1) {
+    if (isSentenceDelimiter(text[i])) {
+      return skipLeadingSpaces(text, i + 1);
+    }
+  }
+
+  return skipLeadingSpaces(text, 0);
+}
+
+function findSentenceEnd(text, pivot) {
+  if (!text) return 0;
+
+  const startPivot = Math.min(Math.max(pivot, 0), text.length - 1);
+  for (let i = startPivot; i < text.length; i += 1) {
+    if (isSentenceDelimiter(text[i])) {
+      return i + 1;
+    }
+  }
+
+  return text.length;
 }
 
 function getTextSegments(block) {
