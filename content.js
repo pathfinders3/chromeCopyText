@@ -2,6 +2,7 @@ let copyMode = "tag";
 let cumulativeMode = false;
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 const CODE_PATTERN_REGEX = /\b[A-Za-z]+-\d+\b/g;
+const SINGLE_CODE_PATTERN_REGEX = /[A-Za-z]+-\d+/;
 
 // 옵션값을 미리 읽어둠
 chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false }, (items) => {
@@ -47,7 +48,13 @@ document.addEventListener("click", async function (event) {
 
   if (copyMode === "pattern") {
     const patternInfo = getPatternFromClick(block, event.clientX, event.clientY);
-    text = patternInfo.text;
+    text = sanitizeCodePattern(patternInfo.text || "");
+
+    // 클릭 지점 기반 탐색이 실패해도 블록 텍스트에서 패턴만 추출해 복사한다.
+    if (!text) {
+      text = sanitizeCodePattern(block.innerText || "");
+    }
+
     highlightRange = patternInfo.range;
   }
 
@@ -167,6 +174,13 @@ function getPatternFromClick(block, x, y) {
   patternRange.setEnd(endPos.node, endPos.offset);
 
   return { text: selectedMatch[0], range: patternRange };
+}
+
+function sanitizeCodePattern(text) {
+  if (!text) return "";
+
+  const match = text.match(SINGLE_CODE_PATTERN_REGEX);
+  return match ? match[0] : "";
 }
 
 function isSentenceDelimiter(char) {
