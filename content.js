@@ -1,5 +1,6 @@
 let copyMode = "tag";
 let cumulativeMode = false;
+let shouldStartNewCumulative = false;
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 const CODE_PATTERN_REGEX = /\b[A-Za-z]+-\d+\b/g;
 const SINGLE_CODE_PATTERN_REGEX = /[A-Za-z]+-\d+/;
@@ -8,6 +9,7 @@ const SINGLE_CODE_PATTERN_REGEX = /[A-Za-z]+-\d+/;
 chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false }, (items) => {
   copyMode = items.copyMode;
   cumulativeMode = items.cumulativeMode;
+  shouldStartNewCumulative = items.cumulativeMode;
 });
 
 // 옵션 변경 시 즉시 반영
@@ -18,6 +20,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
     if (changes.cumulativeMode) {
       cumulativeMode = changes.cumulativeMode.newValue;
+      shouldStartNewCumulative = changes.cumulativeMode.newValue;
     }
   }
 });
@@ -66,16 +69,25 @@ document.addEventListener("click", async function (event) {
     const borderColor = cumulativeMode ? "#22c55e" : "red";
     
     if (cumulativeMode && !shouldResetCumulative) {
-      try {
-        const existingText = await navigator.clipboard.readText();
-        clipboardText = existingText + "\n" + text;
-      } catch (readError) {
-        // 클립보드 읽기 실패 시 새 텍스트만 복사
+      if (shouldStartNewCumulative) {
+        // 누적 모드로 전환된 뒤 첫 복사는 외부 앱의 기존 클립보드를 무시하고 시작한다.
         clipboardText = text;
+      } else {
+        try {
+          const existingText = await navigator.clipboard.readText();
+          clipboardText = existingText + "\n" + text;
+        } catch (readError) {
+          // 클립보드 읽기 실패 시 새 텍스트만 복사
+          clipboardText = text;
+        }
       }
     }
     
     await navigator.clipboard.writeText(clipboardText);
+    if (cumulativeMode) {
+      shouldStartNewCumulative = false;
+    }
+
     if (highlightRange) {
       flashRangeBorder(highlightRange, borderColor);
     } else {
