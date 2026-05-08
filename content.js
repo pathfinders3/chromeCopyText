@@ -1,15 +1,22 @@
 let copyMode = "tag";
+let cumulativeMode = false;
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 
 // 옵션값을 미리 읽어둠
-chrome.storage.sync.get({ copyMode: "tag" }, (items) => {
+chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false }, (items) => {
   copyMode = items.copyMode;
+  cumulativeMode = items.cumulativeMode;
 });
 
 // 옵션 변경 시 즉시 반영
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "sync" && changes.copyMode) {
-    copyMode = changes.copyMode.newValue;
+  if (area === "sync") {
+    if (changes.copyMode) {
+      copyMode = changes.copyMode.newValue;
+    }
+    if (changes.cumulativeMode) {
+      cumulativeMode = changes.cumulativeMode.newValue;
+    }
   }
 });
 
@@ -40,7 +47,19 @@ document.addEventListener("click", async function (event) {
   if (!text) return;
 
   try {
-    await navigator.clipboard.writeText(text);
+    let clipboardText = text;
+    
+    if (cumulativeMode) {
+      try {
+        const existingText = await navigator.clipboard.readText();
+        clipboardText = existingText + "\n" + text;
+      } catch (readError) {
+        // 클립보드 읽기 실패 시 새 텍스트만 복사
+        clipboardText = text;
+      }
+    }
+    
+    await navigator.clipboard.writeText(clipboardText);
     if (copyMode === "sentence" && highlightRange) {
       flashRangeBorder(highlightRange);
     } else {

@@ -3,7 +3,7 @@
   "name": "Ctrl Click Paragraph Copier",
   "version": "1.0",
   "description": "Ctrl + Click으로 단락/줄 텍스트를 클립보드에 복사합니다.",
-  "permissions": ["clipboardWrite", "storage"],
+  "permissions": ["clipboardWrite", "clipboardRead", "storage"],
   "options_page": "options.html",
   
   "icons": {
