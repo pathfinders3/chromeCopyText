@@ -63,6 +63,7 @@ document.addEventListener("click", async function (event) {
   try {
     let clipboardText = text;
     const shouldResetCumulative = event.shiftKey;
+    const borderColor = cumulativeMode ? "#22c55e" : "red";
     
     if (cumulativeMode && !shouldResetCumulative) {
       try {
@@ -76,9 +77,9 @@ document.addEventListener("click", async function (event) {
     
     await navigator.clipboard.writeText(clipboardText);
     if (highlightRange) {
-      flashRangeBorder(highlightRange);
+      flashRangeBorder(highlightRange, borderColor);
     } else {
-      flashBorder(highlightElement);
+      flashBorder(highlightElement, borderColor);
     }
     console.log("Copied:", text);
   } catch (error) {
@@ -281,13 +282,13 @@ function getCaretRangeFromPoint(x, y) {
   return null;
 }
 
-function flashBorder(element) {
+function flashBorder(element, color = "red") {
   if (!element) return;
 
   const originalOutline = element.style.outline;
   const originalOutlineOffset = element.style.outlineOffset;
 
-  element.style.outline = "3px solid red";
+  element.style.outline = `3px solid ${color}`;
   element.style.outlineOffset = "2px";
 
   setTimeout(() => {
@@ -296,7 +297,7 @@ function flashBorder(element) {
   }, 1000);
 }
 
-function flashRangeBorder(range) {
+function flashRangeBorder(range, color = "red") {
   if (!range) return;
 
   const rects = Array.from(range.getClientRects()).filter(
@@ -313,7 +314,7 @@ function flashRangeBorder(range) {
     overlay.style.top = `${rect.top}px`;
     overlay.style.width = `${rect.width}px`;
     overlay.style.height = `${rect.height}px`;
-    overlay.style.border = "2px solid red";
+    overlay.style.border = `2px solid ${color}`;
     overlay.style.boxSizing = "border-box";
     overlay.style.pointerEvents = "none";
     overlay.style.zIndex = "2147483647";
