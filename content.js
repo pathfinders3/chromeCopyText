@@ -48,8 +48,9 @@ document.addEventListener("click", async function (event) {
 
   try {
     let clipboardText = text;
+    const shouldResetCumulative = event.shiftKey;
     
-    if (cumulativeMode) {
+    if (cumulativeMode && !shouldResetCumulative) {
       try {
         const existingText = await navigator.clipboard.readText();
         clipboardText = existingText + "\n" + text;
