@@ -1,6 +1,7 @@
 let copyMode = "tag";
 let cumulativeMode = false;
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
+const CODE_PATTERN_REGEX = /\b[A-Za-z]+-\d+\b/g;
 
 // 옵션값을 미리 읽어둠
 chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false }, (items) => {
@@ -44,6 +45,12 @@ document.addEventListener("click", async function (event) {
     highlightRange = sentenceInfo.range;
   }
 
+  if (copyMode === "pattern") {
+    const patternInfo = getPatternFromClick(block, event.clientX, event.clientY);
+    text = patternInfo.text;
+    highlightRange = patternInfo.range;
+  }
+
   if (!text) return;
 
   try {
@@ -61,7 +68,7 @@ document.addEventListener("click", async function (event) {
     }
     
     await navigator.clipboard.writeText(clipboardText);
-    if (copyMode === "sentence" && highlightRange) {
+    if (highlightRange) {
       flashRangeBorder(highlightRange);
     } else {
       flashBorder(highlightElement);
@@ -107,6 +114,59 @@ function getSentenceFromClick(block, x, y) {
   sentenceRange.setEnd(endPos.node, endPos.offset);
 
   return { text: sentenceText, range: sentenceRange };
+}
+
+function getPatternFromClick(block, x, y) {
+  const segments = getTextSegments(block);
+  if (segments.length === 0) return { text: "", range: null };
+
+  const fullText = segments.map((segment) => segment.text).join("");
+  const matches = Array.from(fullText.matchAll(CODE_PATTERN_REGEX));
+  if (matches.length === 0) return { text: "", range: null };
+
+  const range = getCaretRangeFromPoint(x, y);
+  let globalOffset = null;
+
+  if (range && range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
+    const clickedSegment = segments.find((segment) => segment.node === range.startContainer);
+    if (clickedSegment) {
+      globalOffset = clickedSegment.start + range.startOffset;
+    }
+  }
+
+  let selectedMatch = matches[0];
+  if (globalOffset !== null) {
+    const containingMatch = matches.find((match) => {
+      const start = match.index || 0;
+      const end = start + match[0].length;
+      return globalOffset >= start && globalOffset < end;
+    });
+
+    if (containingMatch) {
+      selectedMatch = containingMatch;
+    } else {
+      selectedMatch = matches.reduce((best, current) => {
+        const bestStart = best.index || 0;
+        const currentStart = current.index || 0;
+        const bestDistance = Math.abs(globalOffset - bestStart);
+        const currentDistance = Math.abs(globalOffset - currentStart);
+
+        return currentDistance < bestDistance ? current : best;
+      }, matches[0]);
+    }
+  }
+
+  const start = selectedMatch.index || 0;
+  const end = start + selectedMatch[0].length;
+  const startPos = getPositionFromOffset(segments, start);
+  const endPos = getPositionFromOffset(segments, end);
+  if (!startPos || !endPos) return { text: selectedMatch[0], range: null };
+
+  const patternRange = document.createRange();
+  patternRange.setStart(startPos.node, startPos.offset);
+  patternRange.setEnd(endPos.node, endPos.offset);
+
+  return { text: selectedMatch[0], range: patternRange };
 }
 
 function isSentenceDelimiter(char) {
