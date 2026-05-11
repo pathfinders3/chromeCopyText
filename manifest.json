@@ -21,11 +21,11 @@
       },
       "description": "복사 기준: 문장"
     },
-    "set-copy-mode-pattern": {
+    "open-options-page": {
       "suggested_key": {
-        "default": "Alt+3"
+        "default": "Alt+0"
       },
-      "description": "복사 기준: 코드 패턴"
+      "description": "옵션 페이지 열기"
     },
     "set-copy-mode-date": {
       "suggested_key": {

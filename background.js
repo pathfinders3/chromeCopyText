@@ -6,6 +6,11 @@ const COPY_MODE_COMMANDS = {
 };
 
 chrome.commands.onCommand.addListener((command) => {
+  if (command === "open-options-page") {
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
   const copyMode = COPY_MODE_COMMANDS[command];
 
   if (copyMode) {
