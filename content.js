@@ -4,10 +4,13 @@ let shouldStartNewCumulative = false;
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 const CODE_PATTERN_REGEX = /\b[A-Za-z]+-\d+\b/g;
 const SINGLE_CODE_PATTERN_REGEX = /[A-Za-z]+-\d+/;
+const DATE_PATTERN_REGEX = /(?:\b\d{4}\.\s?(?:0?[1-9]|1[0-2])\.\s?(?:0?[1-9]|[12]\d|3[01])\.)|(?:\b\d{4}\/(?:0?[1-9]|1[0-2])\/(?:0?[1-9]|[12]\d|3[01])\b)|(?:\b\d{4}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01])\b)/g;
+const SINGLE_DATE_PATTERN_REGEX = /(?:\b\d{4}\.\s?(?:0?[1-9]|1[0-2])\.\s?(?:0?[1-9]|[12]\d|3[01])\.)|(?:\b\d{4}\/(?:0?[1-9]|1[0-2])\/(?:0?[1-9]|[12]\d|3[01])\b)|(?:\b\d{4}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01])\b)/;
 const COPY_MODE_LABELS = {
   tag: "태그 기준",
   sentence: "문장 기준",
   pattern: "코드 패턴 기준",
+  date: "날짜 기준",
 };
 
 // 옵션값을 미리 읽어둠
@@ -114,6 +117,18 @@ document.addEventListener("click", async function (event) {
     }
 
     highlightRange = patternInfo.range;
+  }
+
+  if (copyMode === "date") {
+    const dateInfo = getDateFromClick(block, event.clientX, event.clientY);
+    text = sanitizeDatePattern(dateInfo.text || "");
+
+    // 클릭 지점 기반 탐색이 실패해도 블록 텍스트에서 날짜만 추출해 복사한다.
+    if (!text) {
+      text = sanitizeDatePattern(block.innerText || "");
+    }
+
+    highlightRange = dateInfo.range;
   }
 
   if (!text) return;
@@ -244,10 +259,70 @@ function getPatternFromClick(block, x, y) {
   return { text: selectedMatch[0], range: patternRange };
 }
 
+function getDateFromClick(block, x, y) {
+  const segments = getTextSegments(block);
+  if (segments.length === 0) return { text: "", range: null };
+
+  const fullText = segments.map((segment) => segment.text).join("");
+  const matches = Array.from(fullText.matchAll(DATE_PATTERN_REGEX));
+  if (matches.length === 0) return { text: "", range: null };
+
+  const range = getCaretRangeFromPoint(x, y);
+  let globalOffset = null;
+
+  if (range && range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
+    const clickedSegment = segments.find((segment) => segment.node === range.startContainer);
+    if (clickedSegment) {
+      globalOffset = clickedSegment.start + range.startOffset;
+    }
+  }
+
+  let selectedMatch = matches[0];
+  if (globalOffset !== null) {
+    const containingMatch = matches.find((match) => {
+      const start = match.index || 0;
+      const end = start + match[0].length;
+      return globalOffset >= start && globalOffset < end;
+    });
+
+    if (containingMatch) {
+      selectedMatch = containingMatch;
+    } else {
+      selectedMatch = matches.reduce((best, current) => {
+        const bestStart = best.index || 0;
+        const currentStart = current.index || 0;
+        const bestDistance = Math.abs(globalOffset - bestStart);
+        const currentDistance = Math.abs(globalOffset - currentStart);
+
+        return currentDistance < bestDistance ? current : best;
+      }, matches[0]);
+    }
+  }
+
+  const start = selectedMatch.index || 0;
+  const end = start + selectedMatch[0].length;
+  const startPos = getPositionFromOffset(segments, start);
+  const endPos = getPositionFromOffset(segments, end);
+  if (!startPos || !endPos) return { text: selectedMatch[0], range: null };
+
+  const dateRange = document.createRange();
+  dateRange.setStart(startPos.node, startPos.offset);
+  dateRange.setEnd(endPos.node, endPos.offset);
+
+  return { text: selectedMatch[0], range: dateRange };
+}
+
 function sanitizeCodePattern(text) {
   if (!text) return "";
 
   const match = text.match(SINGLE_CODE_PATTERN_REGEX);
+  return match ? match[0] : "";
+}
+
+function sanitizeDatePattern(text) {
+  if (!text) return "";
+
+  const match = text.match(SINGLE_DATE_PATTERN_REGEX);
   return match ? match[0] : "";
 }
 

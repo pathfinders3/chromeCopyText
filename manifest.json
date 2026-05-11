@@ -27,11 +27,11 @@
       },
       "description": "복사 기준: 코드 패턴"
     },
-    "toggle-cumulative-mode": {
+    "set-copy-mode-date": {
       "suggested_key": {
-        "default": "Alt+Shift+C"
+        "default": "Alt+4"
       },
-      "description": "누적 모드 토글"
+      "description": "복사 기준: 날짜"
     }
   },
   
