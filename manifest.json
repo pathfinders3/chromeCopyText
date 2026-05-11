@@ -5,6 +5,35 @@
   "description": "Ctrl + Click으로 단락/줄 텍스트를 클립보드에 복사합니다.",
   "permissions": ["clipboardWrite", "clipboardRead", "storage"],
   "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "set-copy-mode-tag": {
+      "suggested_key": {
+        "default": "Alt+1"
+      },
+      "description": "복사 기준: 태그(p/div/li)"
+    },
+    "set-copy-mode-sentence": {
+      "suggested_key": {
+        "default": "Alt+2"
+      },
+      "description": "복사 기준: 문장"
+    },
+    "set-copy-mode-pattern": {
+      "suggested_key": {
+        "default": "Alt+3"
+      },
+      "description": "복사 기준: 코드 패턴"
+    },
+    "toggle-cumulative-mode": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "누적 모드 토글"
+    }
+  },
   
   "icons": {
     "16": "icon16.png",

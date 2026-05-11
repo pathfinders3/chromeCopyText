@@ -42,3 +42,22 @@ cumulativeCheckbox.addEventListener("change", () => {
     }
   );
 });
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "sync") return;
+
+  if (changes.copyMode) {
+    const nextMode = changes.copyMode.newValue;
+    const selected = document.querySelector(
+      `input[name='copyMode'][value='${nextMode}']`
+    );
+
+    if (selected) {
+      selected.checked = true;
+    }
+  }
+
+  if (changes.cumulativeMode) {
+    cumulativeCheckbox.checked = changes.cumulativeMode.newValue;
+  }
+});
