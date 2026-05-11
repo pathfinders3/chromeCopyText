@@ -4,6 +4,11 @@ let shouldStartNewCumulative = false;
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 const CODE_PATTERN_REGEX = /\b[A-Za-z]+-\d+\b/g;
 const SINGLE_CODE_PATTERN_REGEX = /[A-Za-z]+-\d+/;
+const COPY_MODE_LABELS = {
+  tag: "태그 기준",
+  sentence: "문장 기준",
+  pattern: "코드 패턴 기준",
+};
 
 // 옵션값을 미리 읽어둠
 chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false }, (items) => {
@@ -17,13 +22,63 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "sync") {
     if (changes.copyMode) {
       copyMode = changes.copyMode.newValue;
+      const modeLabel = COPY_MODE_LABELS[copyMode] || copyMode;
+      showToast(`복사 기준: ${modeLabel}`);
     }
     if (changes.cumulativeMode) {
       cumulativeMode = changes.cumulativeMode.newValue;
       shouldStartNewCumulative = changes.cumulativeMode.newValue;
+      showToast(
+        `누적 모드: ${cumulativeMode ? "켜짐" : "꺼짐"}`
+      );
     }
   }
 });
+
+function showToast(message) {
+  if (!message) return;
+
+  const existing = document.getElementById("ctrl-click-copier-toast");
+  if (existing) {
+    existing.remove();
+  }
+
+  const toast = document.createElement("div");
+  toast.id = "ctrl-click-copier-toast";
+  toast.textContent = message;
+  toast.style.position = "fixed";
+  toast.style.right = "16px";
+  toast.style.bottom = "16px";
+  toast.style.padding = "10px 14px";
+  toast.style.borderRadius = "10px";
+  toast.style.background = "rgba(22, 22, 22, 0.9)";
+  toast.style.color = "#ffffff";
+  toast.style.fontSize = "13px";
+  toast.style.fontWeight = "600";
+  toast.style.lineHeight = "1.4";
+  toast.style.boxShadow = "0 6px 18px rgba(0, 0, 0, 0.35)";
+  toast.style.zIndex = "2147483647";
+  toast.style.opacity = "0";
+  toast.style.transform = "translateY(4px)";
+  toast.style.transition = "opacity 0.15s ease, transform 0.15s ease";
+  toast.style.pointerEvents = "none";
+
+  document.body.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(4px)";
+
+    setTimeout(() => {
+      toast.remove();
+    }, 160);
+  }, 1200);
+}
 
 document.addEventListener("click", async function (event) {
   if (!event.ctrlKey) return;
