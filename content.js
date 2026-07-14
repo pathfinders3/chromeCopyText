@@ -1,6 +1,7 @@
 let copyMode = "tag";
 let cumulativeMode = false;
 let shouldStartNewCumulative = false;
+let shortcutGroup = "1234";
 const SENTENCE_DELIMITERS = new Set([".", "!", "?", "…", "。"]);
 const CODE_PATTERN_REGEX = /\b[A-Za-z]+-\d+\b/g;
 const SINGLE_CODE_PATTERN_REGEX = /[A-Za-z]+-\d+/;
@@ -14,9 +15,10 @@ const COPY_MODE_LABELS = {
 };
 
 // 옵션값을 미리 읽어둠
-chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false }, (items) => {
+chrome.storage.sync.get({ copyMode: "tag", cumulativeMode: false, shortcutGroup: "1234" }, (items) => {
   copyMode = items.copyMode;
   cumulativeMode = items.cumulativeMode;
+  shortcutGroup = items.shortcutGroup;
   shouldStartNewCumulative = items.cumulativeMode;
 });
 
@@ -35,8 +37,46 @@ chrome.storage.onChanged.addListener((changes, area) => {
         `누적 모드: ${cumulativeMode ? "켜짐" : "꺼짐"}`
       );
     }
+    if (changes.shortcutGroup) {
+      shortcutGroup = changes.shortcutGroup.newValue;
+      showToast(`단축키 세트: ALT+${shortcutGroup[0]}~${shortcutGroup[3]}`);
+    }
   }
 });
+
+document.addEventListener("keydown", function (event) {
+  if (!event.altKey || event.ctrlKey || event.metaKey || event.repeat) return;
+
+  const target = event.target;
+  if (
+    target &&
+    (target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT" ||
+      target.isContentEditable)
+  ) {
+    return;
+  }
+
+  const modeKeys =
+    shortcutGroup === "5678"
+      ? { "5": "tag", "6": "sentence", "7": "pattern", "8": "date" }
+      : { "1": "tag", "2": "sentence", "3": "pattern", "4": "date" };
+
+  if (event.key === "0") {
+    event.preventDefault();
+    event.stopPropagation();
+    chrome.runtime.sendMessage({ type: "open-options-page" });
+    return;
+  }
+
+  const nextMode = modeKeys[event.key];
+  if (!nextMode) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  chrome.storage.sync.set({ copyMode: nextMode });
+}, true);
 
 function showToast(message) {
   if (!message) return;

@@ -8,32 +8,7 @@
   "background": {
     "service_worker": "background.js"
   },
-  "commands": {
-    "set-copy-mode-tag": {
-      "suggested_key": {
-        "default": "Alt+1"
-      },
-      "description": "복사 기준: 태그(p/div/li)"
-    },
-    "set-copy-mode-sentence": {
-      "suggested_key": {
-        "default": "Alt+2"
-      },
-      "description": "복사 기준: 문장"
-    },
-    "open-options-page": {
-      "suggested_key": {
-        "default": "Alt+0"
-      },
-      "description": "옵션 페이지 열기"
-    },
-    "set-copy-mode-date": {
-      "suggested_key": {
-        "default": "Alt+4"
-      },
-      "description": "복사 기준: 날짜"
-    }
-  },
+
   
   "icons": {
     "16": "icon16.png",
